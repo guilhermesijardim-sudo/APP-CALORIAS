@@ -404,10 +404,20 @@ async function loadAllDays(uid){
   try{
     const snap=await getDocs(collection(db,'users',uid,'dias'));
     const days={};snap.forEach(d=>{days[d.id]=d.data().items||[];});
-    const fb=JSON.parse(localStorage.getItem('cc_'+uid)||'{}');
-    Object.keys(fb).forEach(d=>{if(!days[d])days[d]=fb[d];});
-    cachedDays=days;setSyncStatus('ok');
-  }catch{const fb=JSON.parse(localStorage.getItem('cc_'+uid)||'{}');cachedDays=fb;setSyncStatus('offline');}
+    // Merge cache de todas as versões anteriores do app
+    ['cc_'+uid,'cc_fb_'+uid,'cc4_'+uid,'cc3_'+uid].forEach(k=>{
+      try{const fb=JSON.parse(localStorage.getItem(k)||'{}');Object.keys(fb).forEach(d=>{if(!days[d]&&fb[d]&&fb[d].length)days[d]=fb[d];});}catch{}
+    });
+    cachedDays=days;
+    localStorage.setItem('cc_'+uid,JSON.stringify(days));
+    setSyncStatus('ok');
+  }catch{
+    const days={};
+    ['cc_'+uid,'cc_fb_'+uid,'cc4_'+uid].forEach(k=>{
+      try{const fb=JSON.parse(localStorage.getItem(k)||'{}');Object.keys(fb).forEach(d=>{if(!days[d])days[d]=fb[d];});}catch{}
+    });
+    cachedDays=days;setSyncStatus('offline');
+  }
 }
 async function savePerfilCloud(uid,p){try{await setDoc(doc(db,'users',uid,'config','perfil'),p);}catch{localStorage.setItem('cc_perf_'+uid,JSON.stringify(p));}}
 async function loadPerfilCloud(uid){try{const d=await getDoc(doc(db,'users',uid,'config','perfil'));return d.exists()?d.data():null;}catch{const s=localStorage.getItem('cc_perf_'+uid);return s?JSON.parse(s):null;}}
