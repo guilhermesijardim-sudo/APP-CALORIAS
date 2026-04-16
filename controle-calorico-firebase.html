@@ -152,8 +152,7 @@ label{font-size:13px;color:var(--text2);display:block;margin-bottom:5px;font-wei
 <div id="loading">
   <div class="lspn"></div>
   <div class="load-greeting" id="load-greeting"></div>
-  <div class="load-title">Controle Calórico</div>
-  <div class="load-sub" id="load-msg">Conectando...</div>
+  <div class="load-sub" id="load-msg">Carregando seus dados...</div>
 </div>
 
 <div id="login-screen" style="display:none">
@@ -249,7 +248,7 @@ function saudacao(){
   const h=new Date().getHours();
   if(h>=5&&h<12) return'Bom dia ☀️';
   if(h>=12&&h<19) return'Boa tarde 🌤️';
-  return'Boa noite 🌙';
+  return 'Boa noite 🌙';
 }
 document.getElementById('load-greeting').textContent=saudacao();
 
@@ -752,13 +751,28 @@ window.confQtd=async()=>{
 // ── HISTÓRICO ────────────────────────────────────────────
 function rHist(w){
   // Remove duplicatas de datas (Hoje vs data real)
+  // Mescla entradas duplicadas do mesmo dia
+  const hj=hoje();
+  Object.keys(cachedDays).forEach(k=>{
+    if(k!==hj){
+      const kDate=new Date(k+'T12:00').toISOString().split('T')[0];
+      if(kDate===hj&&k!==hj){
+        cachedDays[hj]=[...(cachedDays[hj]||[]),...(cachedDays[k]||[])];
+        delete cachedDays[k];
+      }
+    }
+  });
+  // Deduplica por id dentro de cada dia
+  Object.keys(cachedDays).forEach(d=>{
+    const seen=new Set();
+    cachedDays[d]=(cachedDays[d]||[]).filter(x=>{if(seen.has(x.id))return false;seen.add(x.id);return true;});
+  });
   const allKeys=[...new Set(Object.keys(cachedDays))].sort().reverse();
   const totalDias=allKeys.length,start=histPage*HIST_PAGE,pageKeys=allKeys.slice(start,start+HIST_PAGE);
   const hasPrev=histPage>0,hasNext=start+HIST_PAGE<totalDias;
   const totalCal=allKeys.reduce((s,d)=>s+(cachedDays[d]||[]).reduce((ss,x)=>ss+x.cal,0),0);
   const media=totalDias?Math.round(totalCal/totalDias):0;
   const ok=allKeys.filter(d=>{const t=(cachedDays[d]||[]).reduce((s,x)=>s+x.cal,0);return t>0&&t<=perfil.meta*1.1;});
-  const hj=hoje();
   const rows=!pageKeys.length?`<div style="color:var(--text3);font-size:14px">Sem registros ainda</div>`
     :pageKeys.map(d=>{
       const dt=(cachedDays[d]||[]).reduce((s,x)=>s+x.cal,0);
